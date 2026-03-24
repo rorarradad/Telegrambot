@@ -6,7 +6,7 @@ from threading import Thread
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 
-# --- Flask Server (Keep Alive) ---
+# --- Flask Server (Keep Alive for Render) ---
 app_flask = Flask('')
 @app_flask.route('/')
 def home(): return "Bot is Alive!"
@@ -21,143 +21,188 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 def get_user_info(update: Update):
     user = update.effective_user
     name = user.first_name if user.first_name else "User"
+    username = f"@{user.username}" if user.username else "Not Set"
     uid = user.id
-    return name, uid
+    return name, username, uid
 
-# --- কমান্ড ফাংশনসমূহ ---
+# --- কমান্ড হ্যান্ডলারসমূহ ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    name, _ = get_user_info(update)
+    name, _, _ = get_user_info(update)
     text = (f"⚡️Welcome {name} to Vanila exchange ! ⚡️\n"
             "Sell, Buy, and strike deals in seconds!!\n"
-            "Current rate is 33%")
-    keyboard = [[InlineKeyboardButton("🛒Buy Cards", callback_data='buy_cards'), 
-                 InlineKeyboardButton("💳 Stock", callback_data='stock')],
-                [InlineKeyboardButton("📞 Contact Admin", url='https://t.me/Vanila_card_prepaid')]]
+            "All transactions are secure and transparent.\n"
+            "All types of cards are available here at best rates. Current rate is 37%")
+    
+    keyboard = [
+        [InlineKeyboardButton("🛒Buy Cards", callback_data='buy_cards'), 
+         InlineKeyboardButton("💳 Stock", callback_data='stock')],
+        [InlineKeyboardButton("📞 Contact Admin", url='https://t.me/Vanila_card_prepaid')]
+    ]
     await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard))
 
+async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    name, username, uid = get_user_info(update)
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    bot_username = (await context.bot.get_me()).username
+    ref_link = f"https://t.me/{bot_username}?start={uid}"
+    
+    text = (f"⚡ VANILA PROFILE ⚡\n\n"
+            f"👤 {name}\n"
+            f"🧠 \"It is impossible to love and to be wise.\"\n"
+            f"💬 By: Francis Bacon\n\n"
+            f"🆔 User ID: `{uid}`\n"
+            f"🔹 Username: {username}\n"
+            f"💰 TON Balance: 0.0000000000\n"
+            f"💵 USD Total: $0.00\n\n"
+            f"📥 Deposits\n• Total: 0.0000 TON\n• USD: $0.00\n• Last: Never\n\n"
+            f"🛒 Purchases\n• Count: 0\n• USD Spent: $0.00\n• Last Cards:\n  • No cards purchased yet.\n\n"
+            f"👥 Referrals\n• Invited: 0\n• Referred By: `{ref_link}`\n\n"
+            f"🛠 Permissions\n• Vendor: ❌\n• Re-list: ❌\n\n"
+            f"Last updated: {now}")
+    await update.message.reply_text(text, parse_mode='Markdown')
+
 async def referral(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    _, uid = get_user_info(update)
+    _, _, uid = get_user_info(update)
     bot_username = (await context.bot.get_me()).username
     ref_link = f"https://t.me/{bot_username}?start={uid}"
     text = (f"🎉 **REFERRAL PROGRAM**\n\n"
             f"Invite friends and earn 5% every deposit each active referral!\n\n"
-            f"🔗 Your unique link: `{ref_link}` (Click to copy)\n\n"
+            f"🔗 Your unique link: `{ref_link}`\n\n"
             f"📊 **Stats**\n• Total referrals: 0\n• Earned: $0.00\n\n"
             f"❗ **Rules**\n- Bonus awarded when referral completes first transaction\n"
             f"- No self-referrals\n- Fraudulent referrals will be banned")
     await update.message.reply_text(text, parse_mode='Markdown')
 
-async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def deposit(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = ("⚡ vanilla prepaid — TON DEPOSIT ⚡\n\n"
+            "Deposit Information:\n"
+            "`UQBZSURuWZwh8BtakAknwG0wsbpzpTGBUDJNhx5Uun4Vhzah` (Click to copy)\n\n"
+            "Minimum Deposit: 9 TON\n"
+            "Instructions:\n"
+            "1. Send your deposit to the address above.\n"
+            "2. Wait for 1 confirmation.\n"
+            "3. Your balance will update automatically.\n"
+            "4. Please remember to send TON only through the TON Network. ✅\n\n"
+            "⚠️ WARNING:\n- Deposits below the minimum amount will not be processed.\n"
+            "- This address is valid only for your account. Do not share it.\n\n"
+            "⚠️ Note: This deposit session is only active for 30 minutes. Please send your deposit before it expires.")
+    
+    keyboard = [[InlineKeyboardButton("Confirm✅", callback_data='confirm_dep'), 
+                 InlineKeyboardButton("cancel ⛔", callback_data='cancel_dep')]]
+    await update.message.reply_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+
+async def balance_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Your current balance: 0.00 TON")
+
+async def withdraw_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Insufficient balance in your account. Minimum withdrawal is 0.1 TON. Current balance: 0.00 TON")
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("If you need help, please contact the support bot @Vanila_card_prepaid")
 
-async def refund_rules(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def refund_rules_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
-        "⚡️⚡️⚡️ **VERY IMPORTANT** ⚡️⚡️⚡️\n"
-        "💳 **VANILA Exchange – Refund Policy** 💳\n\n"
+        "⚡️⚡️⚡️ VERY IMPORTANT ⚡️⚡️⚡️\n"
+        "💳 VANILA Exchange – Refund Policy 💳\n\n"
         "📢 Please read this carefully to avoid refund rejection.\n\n"
-        "✅✅✅ **CARD REFUND REQUIREMENTS** ✅✅✅\n\n"
+        "✅✅✅ CARD REFUND REQUIREMENTS ✅✅✅\n\n"
         "1️⃣ Refund requests must be submitted within 25 minutes of purchase.\n"
         "2️⃣ Refunds are accepted ONLY if the card is stolen or partially used.\n"
         "3️⃣ When reporting a stolen card, you must clearly state the stolen amount.\n"
         "4️⃣ You must have a valid Telegram username set.\n"
         "5️⃣ 🔁 Do NOT recheck the card balance multiple times.\n\n"
         "💬 Official Refund Support: @vanilarefund\n\n"
-        "❌❌❌ **AUTOMATIC REFUND REJECTIONS** ❌❌❌\n\n"
-        "🚫 No refund for ReListed cards\n"
-        "🚫 No refund for cards used with Google / Google Pay\n"
+        "❌❌❌ AUTOMATIC REFUND REJECTIONS ❌❌❌\n\n"
+        "🚫 No refund for ReListed cards\n🚫 No refund for cards used with Google / Google Pay\n"
         "🚫 No Telegram username = Auto rejection\n"
-        "🚫 No refund for Dead or Invalid cards\n\n"
         "📩 Need help? Contact support: https://t.me/vanilarefund"
     )
-    await update.message.reply_text(text, parse_mode='Markdown')
+    await update.message.reply_text(text)
 
-async def deposit(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = ("⚡ **vanilla prepaid — TON DEPOSIT** ⚡\n\n"
-            "Deposit Information:\n"
-            "`UQBZSURuWZwh8BtakAknwG0wsbpzpTGBUDJNhx5Uun4Vhzah` (Click to copy)\n\n"
-            "Minimum Deposit: 9 TON\n\n"
-            "Instructions:\n"
-            "1. Send your deposit to the address above.\n"
-            "2. Wait for 1 confirmation.\n"
-            "4. Send TON only through the TON Network. ✅\n\n"
-            "⚠️ Note: This deposit session is active for 30 minutes.")
-    
-    keyboard = [[InlineKeyboardButton("Confirm✅", callback_data='confirm_dep'), 
-                 InlineKeyboardButton("Cancel⛔", callback_data='cancel_dep')]]
-    await update.message.reply_text(text, parse_mode='Markdown', reply_markup=InlineKeyboardMarkup(keyboard))
+# --- ইনসাফিশিয়েন্ট ব্যালেন্সের জন্য কমন মেসেজ ---
+async def insufficient_balance_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    cmd = update.message.text
+    if 'unregistered' in cmd:
+        await update.message.reply_text("Due to insufficient balance, you cannot view the unregistered list")
+    elif 'cents' in cmd:
+        await update.message.reply_text("Due to insufficient balance, you cannot view the cents list .")
+    elif 'range' in cmd:
+        await update.message.reply_text("Due to insufficient balance, you cannot view the listing range .")
+    else:
+        await update.message.reply_text("Due to insufficient balance, you cannot view the list .")
 
-# --- বাটন ও মেসেজ লজিক ---
+# --- বাটন ক্লিক ও মেসেজ প্রসেসিং ---
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
     
-    if query.data == 'confirm_dep':
+    if query.data == 'buy_cards':
+        await query.message.reply_text("You do not have sufficient balance. Please deposit first.To deposit, please click the deposit option")
+    elif query.data == 'stock':
+        await query.message.reply_text("Due to insufficient balance, you cannot view the Stock.")
+    elif query.data == 'confirm_dep':
         context.user_data['step'] = 'waiting_amount'
         await query.message.reply_text("Please enter the amount.......")
     elif query.data == 'cancel_dep':
         await query.message.reply_text("Deposit cancelled.")
-    elif query.data in ['buy_cards', 'stock']:
-        await query.message.reply_text("Insufficient balance.")
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def handle_user_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = update.message.text
-    user_step = context.user_data.get('step')
+    step = context.user_data.get('step')
 
-    if user_step == 'waiting_amount':
+    if step == 'waiting_amount':
         try:
-            amount = float(msg)
-            if amount < 9:
+            val = float(msg)
+            if val < 9:
                 await update.message.reply_text("Minimum deposit is 9 TON. Please enter the correct amount")
             else:
-                context.user_data['deposit_amount'] = amount
+                context.user_data['amount'] = msg
                 context.user_data['step'] = 'waiting_txid'
                 await update.message.reply_text("Submit withdraw Txid :")
         except ValueError:
-            await update.message.reply_text("Please enter a valid number (e.g. 9 or 10.5)")
+            await update.message.reply_text("Please enter a valid number.")
 
-    elif user_step == 'waiting_txid':
+    elif step == 'waiting_txid':
         txid = msg
-        amount = context.user_data.get('deposit_amount')
-        name, _ = get_user_info(update)
+        amount = context.user_data.get('amount')
+        name, _, _ = get_user_info(update)
         order_no = random.randint(51, 159)
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         receipt = (f"NAME : {name}\n"
                    f"AMOUNT: {amount}\n"
                    f"Txid : {txid}\n"
-                   f"Order Number : `{order_no}` (Click to copy)\n"
+                   f"Order Number : `{order_no}`\n"
                    f"TIME : {now}\n"
                    f"NOTE : Balance will be added within 1/2 minutes. If not added, contact customer care.")
         
         await update.message.reply_text(receipt, parse_mode='Markdown')
         context.user_data.clear()
 
-async def common_no_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("❌ Due to insufficient balance, you cannot access this feature.")
-
-# --- মেইন রানার ---
+# --- মেইন ফাংশন ---
 if __name__ == '__main__':
     keep_alive()
     app = ApplicationBuilder().token(TOKEN).build()
     
-    # কমান্ড হ্যান্ডলারসমূহ
+    # কমান্ড হ্যান্ডলার
     app.add_handler(CommandHandler('start', start))
+    app.add_handler(CommandHandler('profile', profile))
     app.add_handler(CommandHandler('ref', referral))
-    app.add_handler(CommandHandler('withdraw', withdraw))
-    app.add_handler(CommandHandler('refund_rules', refund_rules))
+    app.add_handler(CommandHandler('balance', balance_cmd))
+    app.add_handler(CommandHandler('withdraw', withdraw_cmd))
     app.add_handler(CommandHandler('help', help_cmd))
+    app.add_handler(CommandHandler('refund_rules', refund_rules_cmd))
     app.add_handler(CommandHandler('deposit', deposit))
-    app.add_handler(CommandHandler(['listings', 'profile', 'balance'], start)) # এগুলোও স্টার্ট বা প্রোফাইলে পাঠাতে পারেন
     
-    # বাটন ও টেক্সট হ্যান্ডলার
+    # ইনসাফিশিয়েন্ট ব্যালেন্স কমান্ডসমূহ
+    app.add_handler(CommandHandler(['listings', 'unregistered_listing', 'cents_listing', 'listing_filter', 'listing_range'], insufficient_balance_cmd))
+    
+    # বাটন ও মেসেজ হ্যান্ডলার
     app.add_handler(CallbackQueryHandler(button_callback))
-    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    app.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_user_input))
     
-    print("Bot is updating with new features...")
+    print("Bot is fully updated and running...")
     app.run_polling()
-                
+                  
