@@ -14,7 +14,7 @@ def run(): app_flask.run(host='0.0.0.0', port=8080)
 def keep_alive(): Thread(target=run).start()
 
 # --- কনফিগারেশন ---
-TOKEN = '8586079260:AAEILif880IasDnEyqTHfhzfwCsh1Ff0CxM'
+TOKEN = '8586079260:AAGJhp65XjNodt3xKzx2do6sXum7kkI56M0'
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -205,4 +205,5 @@ if __name__ == '__main__':
     
     print("Bot is fully updated and running...")
     app.run_polling()
+        
                   
